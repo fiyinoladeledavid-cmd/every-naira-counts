@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Every Naira Count - SERVER READY</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Segoe UI,sans-serif}
+body{background:#f0f4f0}
+.box{max-width:480px;margin:auto;background:#fff;min-height:100vh;position:relative;overflow:hidden}
+header{background:linear-gradient(135deg,#0a7a2a,#c9a600);color:#fff;padding:16px;display:flex;justify-content:space-between;align-items:center}
+#splash{position:fixed;inset:0;background:linear-gradient(135deg,#0a7a2a,#c9a600);z-index:9999;display:flex;flex-direction:column;justify-content:center;align-items:center;color:#fff}
+#splash h1{font-size:32px;animation:pulse 1s infinite}
+@keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.05)}100%{transform:scale(1)}}
+#loginBox{padding:20px}
+#appBox{display:none}
+#adminBox{display:none;background:#0f0f0f;color:#fff;min-height:100vh;padding:0}
+.tabBar{display:flex;background:#e8e8e8;position:sticky;top:0;z-index:10}
+.tabBar button{flex:1;padding:12px;border:0;background:#e8e8e8;font-weight:700;font-size:12px}
+.tabBar button.on{background:#fff;color:#0a7a2a;border-bottom:3px solid #0a7a2a}
+.uPage{display:none;padding:15px}
+.uPage.on{display:block}
+input,select{width:100%;padding:12px;margin:6px 0;border:1.5px solid #ddd;border-radius:10px}
+button{width:100%;padding:12px;background:#0a7a2a;color:#fff;border:0;border-radius:10px;font-weight:700;margin-top:6px;cursor:pointer}
+.card{background:#f9fff9;padding:12px;margin:8px 0;border-radius:12px;border-left:4px solid #0a7a2a;position:relative}
+.imgPrev{width:100%;height:110px;object-fit:cover;border-radius:8px;background:#eee;display:none;margin-bottom:6px}
+.fileBox{border:2px dashed #0a7a2a;padding:15px;border-radius:12px;text-align:center;background:#1a1a1a;margin:6px 0}
+.fileBox input{border:0;margin:0}
+.setBtn{background:rgba(255,255,255,.25);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer}
+.whiteMenu{position:fixed;top:60px;right:10px;background:#fff;color:#111;width:260px;border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.2);z-index:100;display:none;padding:8px}
+.whiteMenu button{background:#fff;color:#111;text-align:left;padding:10px;border-bottom:1px solid #eee}
+.adminMenu{position:absolute;right:10px;top:10px;background:#fff;width:220px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.3);display:none;z-index:20;padding:6px}
+.adminMenu button{background:#fff;color:#000;font-size:13px;text-align:left;padding:9px}
+.pill{background:#0a7a2a;color:#fff;padding:2px 8px;border-radius:20px;font-size:10px}
+</style>
+</head>
+<body>
+
+<div id="splash">
+<h1>💚 Every Naira Count</h1>
+<p>Magboro Food Co-op</p>
+<p style="margin-top:20px;font-size:12px">Loading... 5s</p>
+</div>
+
+<div class="box">
+<header id="mainHeader" style="display:none">
+<div><b id="hName">User</b><br><small>₦<span id="m1">0</span> | Sav:₦<span id="m2">0</span> | Pts:<span id="m3">0</span> | Code:<span id="mCode"></span></small></div>
+<div class="setBtn" onclick="toggleSet()">⚙</div>
+</header>
+
+<div id="whiteMenu" class="whiteMenu">
+<button onclick="showPage('tx');toggleSet()">📜 My Transactions</button>
+<button onclick="downloadMyLog()">⬇️ Download My Logs (Excel)</button>
+<button onclick="alert('Main:'+cur.main+'\nSav:'+cur.sav+'\nPoints:'+cur.points)">💰 My Balance</button>
+<button onclick="logout()" style="color:red">🚪 Logout</button>
+</div>
+
+<div id="loginBox">
+<h3>Login / Register</h3>
+<input id="l1" placeholder="Full Name">
+<input id="l2" placeholder="Bank Account Name">
+<input id="l3" placeholder="Phone">
+<input id="l4" placeholder="Email">
+<input id="l5" type="password" placeholder="Password">
+<input id="l6" placeholder="Referral Code (optional)">
+<button onclick="doLogin()">Enter Application</button>
+<p id="err" style="color:red;font-size:12px;margin-top:6px"></p>
+<p style="font-size:10px;color:#888;margin-top:10px;text-align:center">Owner login: type <b>admin</b> in email</p>
+</div>
+
+<div id="appBox">
+<div style="padding:10px">
+<div style="background:linear-gradient(135deg,#0a7a2a,#c9a600);color:#fff;padding:12px;border-radius:12px">
+<div style="display:flex;gap:6px"><input id="fundAmt" type="number" placeholder="Add Funds" style="margin:0"><button onclick="addFunds()" style="width:80px;margin:0;background:#fff;color:#0a7a2a">Add</button></div>
+<button onclick="shareLink()" style="background:#25D366;margin-top:8px">📤 Share My Referral Link</button>
+<div id="myLink" style="font-size:9px;word-break:break-all;margin-top:4px"></div>
+<div style="margin-top:8px;font-size:12px"><input type="checkbox" id="usePoint" style="width:auto"> Use Points to shop (1pt = ₦100) | You have <b id="ptHave">0</b> pts</div>
+</div>
+</div>
+<div class="tabBar">
+<button id="b-shop" class="on" onclick="showPage('shop')">Shop</button>
+<button id="b-combo" onclick="showPage('combo')">Combo</button>
+<button id="b-save" onclick="showPage('save')">Save</button>
+<button id="b-mem" onclick="showPage('mem')">Members</button>
+<button id="b-tx" onclick="showPage('tx')">Tx</button>
+</div>
+<div id="page-shop" class="uPage on"><div id="listP"></div><div class="card">Cart: <span id="cN">0</span> | ₦<span id="cT">0</span> <span id="cPt"></span></div><button onclick="doBuy()">Buy (Pending Approval)</button></div>
+<div id="page-combo" class="uPage"><div id="listC"></div></div>
+<div id="page-save" class="uPage"><h3>Savings ₦<span id="sB">0</span></h3><select id="sF"><option value="daily">Daily Auto</option><option value="weekly">Weekly</option></select><input id="sA" type="number" placeholder="Amount per time"><input id="sG" type="number" placeholder="Goal"><button onclick="doSave()">Start Auto Save</button><button onclick="doWith()" style="background:#eee;color:#000">Withdraw (Pending)</button></div>
+<div id="page-mem" class="uPage"><div id="memInfo" class="card"></div><div id="memList"></div><input id="memRef" placeholder="Ref code for ₦5000"><button onclick="doMem()">Pay Membership (Pending)</button></div>
+<div id="page-tx" class="uPage"><div id="txList"></div></div>
+</div>
+
+<div id="adminBox">
+<div style="padding:15px;background:#1a1a1a;display:flex;justify-content:space-between"><h3>👑 Owner Panel</h3><div class="setBtn" onclick="logout()">⚙</div></div>
+<div style="padding:15px">
+<div style="background:#222;padding:12px;border-radius:12px">
+<h4>Add Product (Sell Section)</h4>
+<img id="prevP" class="imgPrev">
+<div class="fileBox"><input id="pFile" type="file" accept="image/*" onchange="previewImg(this,'prevP')"></div>
+<input id="pName" placeholder="Product Name"><input id="pPrice" type="number" placeholder="Price">
+<button onclick="addProd()">Add Product to Server</button>
+</div>
+<div style="background:#222;padding:12px;border-radius:12px;margin-top:12px">
+<h4>Add Combo</h4>
+<img id="prevC" class="imgPrev">
+<div class="fileBox"><input id="cFile" type="file" accept="image/*" onchange="previewImg(this,'prevC')"></div>
+<input id="cName" placeholder="Combo Name"><input id="cPrice" type="number" placeholder="Combo Price">
+<button onclick="addCombo()" style="background:#c9a600">Add Combo to Server</button>
+</div>
+<div style="display:flex;gap:6px;margin-top:15px">
+<button onclick="adminShow('users')" style="background:#333">Users</button>
+<button onclick="adminShow('prods')" style="background:#333">Products</button>
+<button onclick="adminShow('txs')" style="background:#c9a600">Pending Funds</button>
+</div>
+<button onclick="downloadAllLogs()" style="background:#fff;color:#000;margin-top:8px">⬇️ Download ENTIRE Logs (Excel)</button>
+<div id="adminBody" style="margin-top:12px"></div>
+</div>
+</div>
+
+</div>
+
+<script>
+let users=[], prods=[], combos=[], txs=[], cur=null, cart=0, cartNum=0, cartPoints=0;
+setTimeout(()=>{document.getElementById('splash').style.display='none'; document.getElementById('mainHeader').style.display='flex';},5000);
+
+function toggleSet(){let m=document.getElementById('whiteMenu'); m.style.display=m.style.display==='block'?'none':'block';}
+function previewImg(input,imgId){let img=document.getElementById(imgId); if(input.files[0]){let r=new FileReader(); r.onload=e=>{img.src=e.target.result; img.style.display='block';}; r.readAsDataURL(input.files[0]);}}
+function showPage(id){document.querySelectorAll('.uPage').forEach(p=>p.classList.remove('on')); document.querySelectorAll('.tabBar button').forEach(b=>b.classList.remove('on')); document.getElementById('page-'+id).classList.add('on'); let btn=document.getElementById('b-'+id); if(btn) btn.classList.add('on'); document.getElementById('whiteMenu').style.display='none';}
+
+async function loadFromServer(){
+ try{
+  let r=await fetch('/api/data'); let db=await r.json();
+  if(db.users){users=db.users; prods=db.prods; combos=db.combos; txs=db.txs;}
+  if(users.length==0){users.push({id:1,name:'Owner',bank:'Owner Bank',phone:'080000',email:'owner',pass:'owner123',code:'OWNER1',main:500000,sav:0,points:100,refs:[],refBy:null,mem:true,owner:true}); await saveToServer();}
+ }catch(e){console.log('offline mode'); let u=JSON.parse(localStorage.getItem('users')||'[]'); if(u.length>0){users=u; prods=JSON.parse(localStorage.getItem('prods')||'[]'); combos=JSON.parse(localStorage.getItem('combos')||'[]'); txs=JSON.parse(localStorage.getItem('txs')||'[]');} else {users.push({id:1,name:'Owner',bank:'Owner Bank',phone:'080000',email:'owner',pass:'owner123',code:'OWNER1',main:500000,sav:0,points:100,refs:[],refBy:null,mem:true,owner:true});}}
+}
+async function saveToServer(){
+ try{ await fetch('/api/data',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({users,prods,combos,txs})}); }catch(e){}
+ localStorage.setItem('users',JSON.stringify(users)); localStorage.setItem('prods',JSON.stringify(prods)); localStorage.setItem('combos',JSON.stringify(combos)); localStorage.setItem('txs',JSON.stringify(txs));
+}
+
+let refLink=new URLSearchParams(location.search).get('ref'); if(refLink) setTimeout(()=>{let el=document.getElementById('l6'); if(el) el.value=refLink;},500);
+
+async function doLogin(){
+ let em=document.getElementById('l4').value.trim().toLowerCase();
+ if(em==='admin'||em==='owner'){document.getElementById('loginBox').style.display='none'; document.getElementById('adminBox').style.display='block'; document.getElementById('mainHeader').style.display='none'; cur=users[0]; localStorage.setItem('cur',JSON.stringify(cur)); adminShow('txs'); return;}
+ let nm=document.getElementById('l1').value,bk=document.getElementById('l2').value,ph=document.getElementById('l3').value,ps=document.getElementById('l5').value,rc=document.getElementById('l6').value||refLink;
+ if(!em||!ps){document.getElementById('err').innerText='Email & password required';return;}
+ let found=users.find(u=>u.email===em);
+ if(found){if(found.pass!==ps){document.getElementById('err').innerText='Wrong password';return;} cur=found;}
+ else {if(!nm||!bk){document.getElementById('err').innerText='Name & bank account name required';return;} let code=Math.random().toString(36).substr(2,5).toUpperCase(); cur={id:Date.now(),name:nm,bank:bk,phone:ph,email:em,pass:ps,code:code,main:2000,sav:0,points:0,refs:[],refBy:rc,mem:false,owner:false}; if(rc){let p=users.find(u=>u.code===rc); if(p){p.refs.push(code); p.points+=2;}} users.push(cur);}
+ localStorage.setItem('cur',JSON.stringify(cur)); await saveToServer();
+ document.getElementById('loginBox').style.display='none'; document.getElementById('appBox').style.display='block'; document.getElementById('mainHeader').style.display='flex'; renderUser();
+}
+
+function renderUser(){
+ let me=users.find(u=>u.id===cur.id); if(me) cur=me;
+ document.getElementById('hName').innerText=cur.name; document.getElementById('m1').innerText=cur.main; document.getElementById('m2').innerText=cur.sav; document.getElementById('m3').innerText=cur.points; document.getElementById('mCode').innerText=cur.code; document.getElementById('ptHave').innerText=cur.points; document.getElementById('sB').innerText=cur.sav;
+ document.getElementById('myLink').innerText=location.href.split('?')[0]+'?ref='+cur.code;
+ document.getElementById('listP').innerHTML=prods.filter(p=>p.ok).map(p=>`<div class=card><img src="${p.img}" style="width:100%;height:110px;object-fit:cover;border-radius:8px" onerror="this.style.display='none'"><b>${p.name}</b><br>₦${p.price} <span class=pill>${p.points||1} pts</span><br><button onclick="cart+=${p.price};cartNum++;cartPoints+=${p.points||1};document.getElementById('cT').innerText=cart;document.getElementById('cN').innerText=cartNum;document.getElementById('cPt').innerText='+'+cartPoints+'pts'">Add to Cart</button></div>`).join('')||'No products yet';
+ if(cur.mem){document.getElementById('listC').innerHTML=combos.map(c=>`<div class=card><img src="${c.img}" style="width:100%;height:110px;object-fit:cover;border-radius:8px" onerror="this.style.display='none'"><b>${c.name}</b><br>₦${c.price}</div>`).join('')||'No combo'; document.getElementById('memInfo').innerHTML=`✅ Member<br>Code:${cur.code} | Referred:${cur.refs.length}`; document.getElementById('memList').innerHTML=users.filter(u=>u.refBy===cur.code).map(u=>`<div class=card>${u.name} - ${u.phone}</div>`).join('')||'No referrals yet';}
+ else {document.getElementById('listC').innerHTML='<div class=card style=color:red>🔒 Members only - pay ₦5000</div>'; document.getElementById('memInfo').innerHTML='<div style=color:red>🔒 You are not a member - pay ₦5000</div>';}
+ document.getElementById('txList').innerHTML=txs.filter(t=>t.uid===cur.id).map(t=>`<div class=card>${t.type} ₦${t.amt} ${t.pts?'-'+t.pts+'pts':''} - <b>${t.st}</b> <small>${new Date(t.id).toLocaleString()}</small></div>`).join('')||'No transactions';
+}
+
+function shareLink(){let l=location.href.split('?')[0]+'?ref='+cur.code; window.open('https://wa.me/?text='+encodeURIComponent('Join Every Naira Count: '+l));}
+async function addFunds(){let a=parseInt(document.getElementById('fundAmt').value); if(!a) return alert('Enter amount'); txs.push({id:Date.now(),uid:cur.id,type:'fund',amt:a,st:'pending'}); await saveToServer(); alert('Funds pending approval');}
+async function doBuy(){if(cart==0) return alert('Cart empty'); let usePt=document.getElementById('usePoint').checked; let ptNeeded=Math.floor(cart/100); let ptUse=0; if(usePt){if(cur.points<=0) return alert('No points'); ptUse=Math.min(ptNeeded,cur.points); let discount=ptUse*100; cart=cart-discount;} txs.push({id:Date.now(),uid:cur.id,type:'product',amt:cart,st:'pending',pts:ptUse}); cart=0;cartNum=0;cartPoints=0; document.getElementById('cT').innerText=0; document.getElementById('cN').innerText=0; document.getElementById('cPt').innerText=''; await saveToServer(); alert('Order pending'); renderUser();}
+async function doSave(){let a=parseInt(document.getElementById('sA').value); if(!a) return; cur.save={freq:document.getElementById('sF').value,amt:a,goal:document.getElementById('sG').value}; users.find(u=>u.id===cur.id).save=cur.save; await saveToServer(); alert('Auto save set');}
+async function doWith(){if(cur.sav<=0) return alert('No savings'); txs.push({id:Date.now(),uid:cur.id,type:'withdraw',amt:cur.sav,st:'pending'}); await saveToServer(); alert('Withdraw pending');}
+async function doMem(){txs.push({id:Date.now(),uid:cur.id,type:'membership',amt:5000,st:'pending',ref:document.getElementById('memRef').value}); await saveToServer(); alert('Membership pending');}
+
+async function addProd(){
+ let n=document.getElementById('pName').value, pr=document.getElementById('pPrice').value, f=document.getElementById('pFile').files[0];
+ if(!n||!pr) return alert('Name & price needed');
+ let imgUrl=''; if(f){ let fd=new FormData(); fd.append('photo',f); try{ let r=await fetch('/api/upload',{method:'POST',body:fd}); let d=await r.json(); imgUrl=d.url; }catch(e){ alert('Upload failed, using local'); let reader=new FileReader(); imgUrl=await new Promise(res=>{reader.onload=e=>res(e.target.result); reader.readAsDataURL(f);}); } }
+ prods.push({id:Date.now(),name:n,price:parseInt(pr),img:imgUrl,ok:true,points:1}); await saveToServer(); adminShow('prods'); document.getElementById('prevP').style.display='none'; document.getElementById('pFile').value='';
+}
+async function addCombo(){
+ let n=document.getElementById('cName').value, pr=document.getElementById('cPrice').value, f=document.getElementById('cFile').files[0];
+ if(!n||!pr) return alert('Name & price needed');
+ let imgUrl=''; if(f){ let fd=new FormData(); fd.append('photo',f); try{ let r=await fetch('/api/upload',{method:'POST',body:fd}); let d=await r.json(); imgUrl=d.url; }catch(e){ let reader=new FileReader(); imgUrl=await new Promise(res=>{reader.onload=e=>res(e.target.result); reader.readAsDataURL(f);}); } }
+ combos.push({id:Date.now(),name:n,price:parseInt(pr),img:imgUrl}); await saveToServer(); adminShow('users'); document.getElementById('prevC').style.display='none'; document.getElementById('cFile').value='';
+}
+
+function adminShow(t){
+ let h='';
+ if(t==='users') h=users.map(u=>`<div class=card style="background:#222;color:#fff;position:relative">${u.name} | ${u.email} | ${u.phone}<br><small>Bank:${u.bank} | Code:${u.code} | Main:₦${u.main} Sav:₦${u.sav} Pts:${u.points}</small><br><button onclick="toggleAdminMenu(${u.id})" style="background:#fff;color:#000;width:auto;padding:6px 12px;margin-top:6px">⚙ Menu</button><div id="am-${u.id}" class="adminMenu"><button onclick="approveFund(${u.id})">✅ Approve Pending Funds</button><button onclick="downloadUserLog(${u.id})">⬇️ Download Logs Excel</button></div></div>`).join('');
+ if(t==='prods') h=prods.map(p=>`<div class=card style="background:#222;color:#fff"><img src="${p.img}" style="width:100%;height:80px;object-fit:cover" onerror="this.style.display='none'"><br>${p.name} ₦${p.price} - ${p.ok?'✅':'⏳'}<br><button onclick="prods.find(x=>x.id==${p.id}).ok=true;saveToServer().then(()=>adminShow('prods'))" style="width:auto">Approve</button> <button onclick="prods=prods.filter(x=>x.id!==${p.id});saveToServer().then(()=>adminShow('prods'))" style="width:auto;background:red">Delete</button></div>`).join('')||'No products';
+ if(t==='txs') h=txs.filter(x=>x.st==='pending').map(x=>{let u=users.find(u=>u.id===x.uid); return `<div class=card style="background:#222;color:#fff"><b>${u?.name||'Unknown'}</b><br>${u?.phone} | ${u?.email}<br>Bank:${u?.bank}<br>Type:${x.type} ₦${x.amt} ${x.pts?x.pts+'pts':''}<br><small>${new Date(x.id).toLocaleString()}</small><br><button onclick="approveTx(${x.id})" style="background:#0a7a2a;width:auto">✅ Approve Funds</button> <button onclick="txs=txs.filter(t=>t.id!==${x.id});saveToServer().then(()=>adminShow('txs'))" style="background:red;width:auto">Reject</button></div>`}).join('')||'No pending funds';
+ document.getElementById('adminBody').innerHTML=h;
+}
+function toggleAdminMenu(id){let m=document.getElementById('am-'+id); if(!m) return; document.querySelectorAll('.adminMenu').forEach(x=>{if(x!==m) x.style.display='none'}); m.style.display=m.style.display==='block'?'none':'block';}
+async function approveFund(uid){let pend=txs.filter(t=>t.uid===uid&&t.st==='pending'); if(pend.length===0) return alert('No pending'); for(let tx of pend){await approveTx(tx.id);} alert('Approved all');}
+async function approveTx(id){let tx=txs.find(x=>x.id===id); if(!tx||tx.st==='ok') return; tx.st='ok'; let u=users.find(x=>x.id===tx.uid); if(!u) return; if(tx.type==='fund') u.main+=tx.amt; if(tx.type==='product'){u.main-=tx.amt; if(tx.pts) u.points-=tx.pts; u.points+=1;} if(tx.type==='membership'){u.mem=true; u.main-=tx.amt;} if(tx.type==='withdraw'){u.sav-=tx.amt; u.main+=tx.amt;} await saveToServer(); adminShow('txs');}
+function downloadAllLogs(){let data=txs.map(t=>{let u=users.find(x=>x.id===t.uid); return {Date:new Date(t.id).toLocaleString(),Name:u?.name,Email:u?.email,Phone:u?.phone,Bank:u?.bank,Code:u?.code,Type:t.type,Amount:t.amt,Points:t.pts||0,Status:t.st};}); let ws=XLSX.utils.json_to_sheet(data); let wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Logs'); XLSX.writeFile(wb,'ENTIRE_LOGS.xlsx');}
+function downloadUserLog(uid){let u=users.find(x=>x.id===uid); let data=txs.filter(t=>t.uid===uid).map(t=>({Date:new Date(t.id).toLocaleString(),Name:u.name,Type:t.type,Amount:t.amt,Points:t.pts||0,Status:t.st})); let ws=XLSX.utils.json_to_sheet(data); let wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,u.code); XLSX.writeFile(wb,u.code+'_logs.xlsx');}
+function downloadMyLog(){downloadUserLog(cur.id);}
+function logout(){localStorage.removeItem('cur'); location.reload();}
+
+loadFromServer().then(()=>{
+ let saved=JSON.parse(localStorage.getItem('cur')||'null');
+ if(saved){cur=users.find(u=>u.id===saved.id)||saved; if(cur.owner){document.getElementById('loginBox').style.display='none'; document.getElementById('adminBox').style.display='block'; document.getElementById('mainHeader').style.display='none'; adminShow('txs');} else {document.getElementById('loginBox').style.display='none'; document.getElementById('appBox').style.display='block'; renderUser();}}
+});
+</script>
+</body>
+</html>
